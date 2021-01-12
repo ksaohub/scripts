@@ -1,0 +1,89 @@
+#!/bin/bash
+#set -x
+
+var20=$(id | cut -c5)
+if [ $var20 == "0" ]; then 
+	echo "Скрипт готов к выполнению"
+	read -p "<Выполнить?:[y/n]>" var21
+		if [ $var21 == "n" ]; then exit 0
+		fi
+else
+echo "Для выполнения скрипта необходимы права пользователя root"
+read -p "<Запустить скрипт от имени пользователя root?:[y/n]>" var22
+	if [ $var22 == "y" ]; then
+	sudo bash $0
+	exit 0
+	else 
+	read -p "<Зайти в систему под пользователем root>?:[y/n]" var23
+		if [ $var23 == "y" ]; then su
+		else exit 0
+		fi
+	
+	fi
+fi
+
+var1=$(getenforce | awk '{print $1}')
+var2=$(grep -v '^#' /etc/selinux/config | grep SELINUX= | cut -d '=' -f2)
+var3=$(sestatus | grep "SELinux status" | awk '{print $3}')
+
+while [ $var1 == "Enabled" ] || [ $var3 == "enabled" ]
+do
+	if [ $var1 == "Enforcing" ]; then
+	echo "Selinux включена"
+	read -p "<Выключить Selinux?>:[y/n]" var4
+		if [ $var4 == "y" ]; then setenforce 0
+		fi
+	else
+	echo "Selinux выключена" 
+	read -p "<Включить Selinux?>:[y/n]" var5
+		if [ $var5 == "y" ]; then setenforce 1
+		fi 
+	fi
+break
+done
+
+if [ $var1 == "Disabled" ]; then
+ if [ $var2 == "disabled" ]; then	
+	echo "Selinux в конфиге неактивирована"
+	read -p "<Активировать Selinux в конфиге?>:[y/n]" var6
+		if [ $var6 == "y" ]; then
+		sed -i 's/SELINUX=disabled/SELINUX=enforcing/g' /etc/selinux/config
+		echo "Для активации необходима перезагрузка"
+		read -p "<Перезагрезить?:[y/n]>" var7
+			if [ $var7 == "y" ]; then reboot
+			fi
+		fi
+ else 
+ echo "Selinux активирована в конфиге, необходима перезагрузка для активации"
+ read -p "<Перезагрузить?:[y/n]>" var10
+	if [ $var10 == "y" ]; then reboot
+	else 
+	read -p "<Дизактивировать в конфиге?:[y/n]>" var12
+		if [ $var12 == "y" ]; then
+		sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+		fi
+	fi
+ fi
+else
+ if [ $var2 == "enforcing" ]; then
+	echo "Selinux в конфиге активирована"
+	read -p "<Дизактивировать Selinux в конфиге?:[y/n]>" var8
+		if [ $var8 == "y" ]; then
+		sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+		echo "Для дизактивации необходима перезагрузка"
+		read -p "<Перезагрузить?:[y/n]>" var9
+			if [ $var9 == "y" ]; then reboot
+			fi
+		fi
+ else 
+ echo "Selinux не активирована в конфиге, необходимма перезагрузка для дизактивации"
+ read -p "<Перезагрузить?:[y/n]>" var11
+	if [ $var11 == "y" ]; then reboot
+	else
+	read -p "<Активировать в конфиге?:[y/n]>" var13
+		if [ $var13 == "y" ]; then
+		sed -i 's/SELINUX=disabled/SELINUX=enforcing/g' /etc/selinux/config
+		fi
+	fi
+ fi
+fi
